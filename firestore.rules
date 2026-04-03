@@ -1,0 +1,170 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: post_engagement
+// Document ID: {postId} (Blogger Post ID)
+// Fields:
+//   - postId: string (required) - The unique ID of the Blogger post.
+//   - views: integer (required) - Total number of views.
+//   - likes: integer (required) - Total number of likes.
+//   - lastUpdated: timestamp (optional) - The last time this engagement data was updated.
+//
+// ===============================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isPositive(field) {
+      return request.resource.data[field] is int && request.resource.data[field] >= 0;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (request.auth.token.email == "kunalsonpitre55555@gmail.com" && request.auth.token.email_verified == true) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        );
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidPost(data) {
+      return hasOnlyAllowedFields(['id', 'title', 'content', 'published', 'updated', 'labels', 'url', 'thumbnail', 'syncedAt']) &&
+             data.id is string && data.id.size() > 0 &&
+             data.title is string && data.title.size() > 0 &&
+             data.content is string &&
+             data.published is string &&
+             data.url is string &&
+             data.thumbnail is string;
+    }
+
+    function isValidPostEngagement(data) {
+      return hasOnlyAllowedFields(['postId', 'views', 'likes', 'lastUpdated']) &&
+             data.postId is string && data.postId.size() > 0 &&
+             data.views is int && data.views >= 0 &&
+             data.likes is int && data.likes >= 0;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /posts/{postId} {
+      // Anyone can read blog posts for SEO and public viewing
+      allow read: if true;
+      
+      // Only admin can modify posts (via sync or manual edit)
+      allow write: if isAdmin();
+    }
+
+    match /post_engagement/{postId} {
+      // Anyone can read engagement counts
+      allow read: if true;
+      
+      // Anyone can create an engagement entry for a post (e.g. first view)
+      allow create: if isValidPostEngagement(request.resource.data) && 
+                      request.resource.data.postId == postId &&
+                      request.resource.data.views == 1 &&
+                      request.resource.data.likes == 0;
+      
+      // Anyone can update views or likes, but only by incrementing
+      allow update: if isValidPostEngagement(request.resource.data) &&
+                      request.resource.data.postId == resource.data.postId &&
+                      (
+                        // Increment views
+                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views', 'lastUpdated']) &&
+                         request.resource.data.views == resource.data.views + 1) ||
+                        // Increment likes
+                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'lastUpdated']) &&
+                         request.resource.data.likes == resource.data.likes + 1)
+                      );
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isOwner(userId) && 
+                      hasOnlyAllowedFields(['uid', 'email', 'displayName', 'role', 'createdAt']) &&
+                      (request.resource.data.role == 'user' || (request.auth.token.email == "kunalsonpitre55555@gmail.com" && request.resource.data.role == 'admin'));
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
+    }
+
+    match /subscribers/{subscriberId} {
+      // Anyone can subscribe (create/get)
+      allow get, create: if true;
+      
+      // Allow update if the user is the owner (by email) or admin
+      // This helps if setDoc is called on an existing document
+      allow update: if isAdmin() || (request.resource.data.email == subscriberId);
+      
+      // Only admin can list or delete
+      allow list, delete: if isAdmin();
+    }
+
+    match /user_habits/{habitId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid &&
+                      hasOnlyAllowedFields(['id', 'userId', 'title', 'description', 'frequency', 'targetDays', 'createdAt', 'streak', 'isPremium']) &&
+                      request.resource.data.id == habitId;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()) &&
+                      request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /habit_logs/{logId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid &&
+                      hasOnlyAllowedFields(['id', 'habitId', 'userId', 'date', 'completed', 'notes']) &&
+                      request.resource.data.id == logId;
+      allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()) &&
+                      request.resource.data.userId == resource.data.userId;
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /user_stats/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    match /journal_entries/{entryId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    match /wellness_logs/{logId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Default deny
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

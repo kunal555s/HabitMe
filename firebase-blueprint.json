@@ -1,0 +1,153 @@
+{
+  "entities": {
+    "Post": {
+      "title": "Blog Post",
+      "description": "Full content and metadata of a blog post synced from Blogger.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "published": { "type": "string" },
+        "updated": { "type": "string" },
+        "labels": { "type": "array", "items": { "type": "string" } },
+        "url": { "type": "string" },
+        "thumbnail": { "type": "string" },
+        "views": { "type": "integer" },
+        "likes": { "type": "integer" }
+      },
+      "required": ["id", "title", "content", "published"]
+    },
+    "PostEngagement": {
+      "title": "Post Engagement",
+      "description": "Tracks views and likes for a specific blog post.",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string" },
+        "views": { "type": "integer" },
+        "likes": { "type": "integer" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      },
+      "required": ["postId", "views", "likes"]
+    },
+    "Subscriber": {
+      "title": "Newsletter Subscriber",
+      "description": "Email address of a user who subscribed to the newsletter.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "subscribedAt": { "type": "string", "format": "date-time" },
+        "source": { "type": "string" }
+      },
+      "required": ["email", "subscribedAt", "source"]
+    },
+    "UserHabit": {
+      "title": "User Habit",
+      "description": "A habit created by a user for tracking.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "frequency": { "type": "string", "enum": ["daily", "weekly", "monthly"] },
+        "targetDays": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "streak": { "type": "integer" },
+        "isPremium": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "title", "frequency"]
+    },
+    "HabitLog": {
+      "title": "Habit Log",
+      "description": "A daily log entry for a specific habit.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "habitId": { "type": "string" },
+        "userId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "completed": { "type": "boolean" },
+        "notes": { "type": "string" },
+        "time": { "type": "string" }
+      },
+      "required": ["id", "habitId", "userId", "date", "completed"]
+    },
+    "UserStats": {
+      "title": "User Stats",
+      "description": "Gamification stats for the user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "xp": { "type": "integer" },
+        "level": { "type": "integer" },
+        "trophies": { "type": "array", "items": { "type": "string" } },
+        "masteryScore": { "type": "integer" }
+      },
+      "required": ["userId", "xp", "level"]
+    },
+    "JournalEntry": {
+      "title": "Journal Entry",
+      "description": "Daily reflection or gratitude entry.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "content": { "type": "string" },
+        "mood": { "type": "string" },
+        "type": { "type": "string", "enum": ["reflection", "gratitude", "future_letter"] }
+      },
+      "required": ["id", "userId", "date", "content", "type"]
+    },
+    "WellnessLog": {
+      "title": "Wellness Log",
+      "description": "Tracking for water, sleep, energy, etc.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "waterGlasses": { "type": "integer" },
+        "sleepQuality": { "type": "integer" },
+        "energyLevel": { "type": "integer" },
+        "screenTime": { "type": "integer" }
+      },
+      "required": ["id", "userId", "date"]
+    }
+  },
+  "firestore": {
+    "/posts/{postId}": {
+      "schema": { "$ref": "Post" },
+      "description": "Synced blog post data."
+    },
+    "/post_engagement/{postId}": {
+      "schema": { "$ref": "PostEngagement" },
+      "description": "Engagement data for a specific post."
+    },
+    "/subscribers/{subscriberId}": {
+      "schema": { "$ref": "Subscriber" },
+      "description": "List of newsletter subscribers."
+    },
+    "/user_habits/{habitId}": {
+      "schema": { "$ref": "UserHabit" },
+      "description": "Habits created by users."
+    },
+    "/habit_logs/{logId}": {
+      "schema": { "$ref": "HabitLog" },
+      "description": "Daily completion logs for habits."
+    },
+    "/user_stats/{userId}": {
+      "schema": { "$ref": "UserStats" },
+      "description": "User gamification data."
+    },
+    "/journal_entries/{entryId}": {
+      "schema": { "$ref": "JournalEntry" },
+      "description": "User journal and reflection data."
+    },
+    "/wellness_logs/{logId}": {
+      "schema": { "$ref": "WellnessLog" },
+      "description": "User wellness tracking data."
+    }
+  }
+}
