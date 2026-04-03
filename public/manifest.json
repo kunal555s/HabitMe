@@ -1,0 +1,21 @@
+{
+  "name": "HabitXpress",
+  "short_name": "HabitXpress",
+  "description": "Master Your Habits, Master Your Life. Science-backed strategies for peak performance.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#D00000",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/habit/192/192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://picsum.photos/seed/habit/512/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
